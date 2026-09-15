@@ -1,0 +1,20 @@
+ARG NGINX_VERSION=1.29.8
+
+FROM nginx:${NGINX_VERSION}
+
+# use prebuilt dynamic module
+COPY module/ngx_http_detect_icap_module.so /etc/nginx/modules/ngx_http_detect_icap_module.so
+
+# template Nginx conf.
+COPY nginx.docker.conf /etc/nginx/nginx.conf.template
+
+# Cert + key for the HTTPS listener (8443) are not baked into this image —
+# see the "certificates" service in docker-compose-certbot.yml and docker-compose-certgen.yml.
+
+EXPOSE 8080 8443
+# envsubst replaces only the ICAP_* variables; nginx variables like $host are left intact.
+CMD ["/bin/sh", "-c", \
+    "envsubst '${ICAP_SCHEME}${ICAP_HOSTNAME}${ICAP_PORT}${ICAP_SERVICE}${ICAP_AUTH}${ICAP_SSL_TRUSTED_CERT}${ICAP_SSL_NAME}' \
+        < /etc/nginx/nginx.conf.template \
+        > /etc/nginx/nginx.conf \
+     && nginx -g 'daemon off;'"]

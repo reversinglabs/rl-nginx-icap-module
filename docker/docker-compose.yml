@@ -1,0 +1,129 @@
+# Shared template for the two nginx variants below (nginx_ce, nginx_pro) —
+# identical except for which Dockerfile they build. `profiles` is
+# deliberately left out of both anchors: it isn't a merge-friendly list (see
+# the two services), so each service sets its own instead.
+x-nginx_build_base: &nginx_build_base
+  context: ..
+  # The prebuilt .so (from the sibling nginx-icap-module-src checkout) is
+  # copied into module/ngx_http_detect_icap_module.so before building — see
+  # README.md's Setup step 1 — and picked up by a plain COPY in
+  # Dockerfile.nginx / Dockerfile.nginx-plus, since it's already inside this
+  # build context.
+  args:
+    NGINX_VERSION: "$NGINX_VERSION"
+
+x-nginx_base: &nginx_base
+  environment:
+    ICAP_SCHEME: "${ICAP_SCHEME}"
+    ICAP_HOSTNAME: "${ICAP_HOSTNAME}"
+    ICAP_PORT: "${ICAP_PORT}"
+    ICAP_AUTH: "${ICAP_AUTH}"
+    ICAP_SERVICE: "${ICAP_SERVICE}"
+    ICAP_SSL_TRUSTED_CERT: "${ICAP_SSL_TRUSTED_CERT}"
+    ICAP_SSL_NAME: "${ICAP_SSL_NAME}"
+  ports:
+    - "$NGINX_PORT:8080"
+    - "$NGINX_HTTPS_PORT:8443"
+  expose:
+    - "8081"
+  volumes:
+    - nginx_certs:/etc/nginx/ssl:ro
+  depends_on:
+    backend:
+      condition: service_started
+    # This file defines no "certificates" service itself — one of
+    # docker-compose-certgen.yml / docker-compose-certbot.yml must be passed
+    # alongside it via -f, or `up` fails to resolve this dependency.
+    certificates:
+      condition: service_completed_successfully
+  # Stable DNS name for whichever of nginx_ce/nginx_pro is actually running
+  # (they're mutually exclusive), so dependents (e.g. nginx-exporter) don't
+  # need to know which variant is active.
+  networks:
+    default:
+      aliases:
+        - nginx
+
+volumes:
+  # Shared between the certificates service (writer), nginx_ce/nginx_pro
+  # (reads cert+key), and tester (reads the cert only, for curl --cacert).
+  nginx_certs:
+
+services:
+  icap-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.icap-server
+    expose:
+      - "1344"
+    profiles:
+      - local-icap
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    expose:
+      - "8000"
+    volumes:
+      - "${SAMPLES_FOLDER}:/files:ro"
+    deploy:
+      replicas: ${BACKEND_REPLICAS:-1}
+
+  nginx_ce:
+    <<: *nginx_base
+    build:
+      <<: *nginx_build_base
+      dockerfile: docker/Dockerfile.nginx
+    volumes:
+      - nginx_certs:/etc/nginx/ssl:ro
+      # - ./a1000-integrations.rl.lan.pem:/etc/nginx/icap-ca.crt:ro
+    profiles:
+      - ce
+
+  nginx_plus:
+    <<: *nginx_base
+    build:
+      <<: *nginx_build_base
+      dockerfile: docker/Dockerfile.nginx-plus
+      # Overrides *nginx_build_base's args entirely (YAML merge keys don't
+      # deep-merge) — fine, Dockerfile.nginx-plus doesn't use NGINX_VERSION.
+      args:
+        UBUNTU_VERSION: "${UBUNTU_VERSION:-24.04}"
+        # Just the filename `COPY --from=nginx-plus-sw-root` looks up inside
+        # the NGINX_PLUS_SW_ROOT context below — the two together let the
+        # .deb live anywhere on disk, under any name.
+        NGINX_PLUS_DEB: "${NGINX_PLUS_DEB:?NGINX_PLUS_DEB not set — see .env-default}"
+      # Named build context so the .deb doesn't have to live in this repo.
+      additional_contexts:
+        nginx-plus-sw-root: "${NGINX_PLUS_SW_ROOT:?NGINX_PLUS_SW_ROOT not set — see .env-default}"
+    volumes:
+      - nginx_certs:/etc/nginx/ssl:ro
+      # - ./a1000-integrations.rl.lan.pem:/etc/nginx/icap-ca.crt:ro
+      # NGINX Plus refuses to start without a license present. A plain
+      # runtime bind mount, so unlike NGINX_PLUS_DEB it isn't resolved
+      # against NGINX_PLUS_SW_ROOT — any absolute path works directly.
+      - ${NGINX_PLUS_LICENSE:?NGINX_PLUS_LICENSE not set — see .env-default}:/etc/nginx/license.jwt:ro
+    profiles:
+      - plus
+
+  tester:
+    image: curlimages/curl:latest
+    user: "100:101"   # curl_user:curl_group — non-root built into the image
+    network_mode: host
+    environment:
+      # network_mode: host means "nginx" isn't resolvable via compose DNS —
+      # reach it through the published port on localhost instead.
+      NGINX_URL: "http://localhost:${NGINX_PORT}"
+    volumes:
+      - "${SAMPLES_FOLDER}:/rl/samples:ro"
+      - "../tests/run_e2e.sh:/home/curl_user/run_e2e.sh:ro"
+      - nginx_certs:/certs:ro
+    # No depends_on: naming nginx_ce/nginx_pro unconditionally would break
+    # `up` when only one is in the active profile set. Harmless — tester
+    # only reaches nginx via localhost:${NGINX_PORT}, not service DNS.
+    entrypoint: ["sh"]
+    stdin_open: true
+    tty: true
+    profiles:
+      - test

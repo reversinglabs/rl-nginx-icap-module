@@ -1,0 +1,68 @@
+# AWS/prod certificate source (real Let's Encrypt cert via standalone
+# HTTP-01) — the equivalent of docker-compose-certgen.yml for a publicly
+# reachable host (never include both at once):
+#   docker compose -f docker-compose.yml -f docker-compose-certbot.yml up -d --build
+#
+# On EC2, something may already hold host port 80 when `up` runs — stop the
+# http-nat-redirect systemd unit first if so (it redirects :80 -> nginx's
+# 8080, so certbot's own standalone listener would never see the challenge):
+#   sudo systemctl stop http-nat-redirect
+volumes:
+  # certbot's account key, archive/, and renewal config — kept separate from
+  # nginx_certs (which only gets the current fullchain.pem/privkey.pem
+  # copied into it) so a rerun can always find its previous state.
+  letsencrypt_certs:
+
+services:
+  certificates:
+    image: certbot/certbot:latest
+    environment:
+      # Not required (":?") here: compose interpolates this block at parse
+      # time regardless of which files are combined, so an unset required
+      # var would break `docker compose config` even when this file isn't
+      # in play. Missing values are instead caught in the script below.
+      LETSENCRYPT_DOMAIN: "${LETSENCRYPT_DOMAIN:-}"
+      LETSENCRYPT_EMAIL: "${LETSENCRYPT_EMAIL:-}"
+      # Let's Encrypt's real endpoint rate-limits aggressively; use staging
+      # (untrusted certs, much higher limits) while testing the flow itself.
+      LETSENCRYPT_STAGING: "${LETSENCRYPT_STAGING:-false}"
+    ports:
+      - "80:80"
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - nginx_certs:/certs
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -eu
+        : "$${LETSENCRYPT_DOMAIN:?set LETSENCRYPT_DOMAIN in harness/.env to the public hostname to certify}"
+        : "$${LETSENCRYPT_EMAIL:?set LETSENCRYPT_EMAIL in harness/.env to the address for Let's Encrypt expiry/renewal notices}"
+        staging_flag=""
+        if [ "$$LETSENCRYPT_STAGING" = "true" ]; then
+          staging_flag="--staging"
+        fi
+        certbot certonly \
+          --standalone \
+          --non-interactive \
+          --agree-tos \
+          --no-eff-email \
+          $$staging_flag \
+          --email "$$LETSENCRYPT_EMAIL" \
+          -d "$$LETSENCRYPT_DOMAIN"
+        # Copy rather than symlink straight into /etc/letsencrypt: /certs
+        # and /etc/letsencrypt are different volumes, so a symlink to the
+        # latter would dangle from nginx's own mount of the former. -L
+        # follows certbot's internal symlinks so nginx gets the actual
+        # current cert/key bytes.
+        live_dir="/etc/letsencrypt/live/$$LETSENCRYPT_DOMAIN"
+        cert_dir="/certs/letsencrypt/live/$$LETSENCRYPT_DOMAIN"
+        mkdir -p "$$cert_dir"
+        cp -L "$$live_dir/fullchain.pem" "$$cert_dir/fullchain.pem"
+        cp -L "$$live_dir/privkey.pem" "$$cert_dir/privkey.pem"
+        chmod 644 "$$cert_dir/fullchain.pem"
+        # Unlink first so a rerun replaces a stale link cleanly instead of
+        # erroring on an existing one.
+        cd /certs
+        find . -maxdepth 1 -type l \( -name '*.crt' -o -name '*.key' \) -exec unlink {} \;
+        ln -s "letsencrypt/live/$$LETSENCRYPT_DOMAIN/fullchain.pem" nginx-rproxy.crt
+        ln -s "letsencrypt/live/$$LETSENCRYPT_DOMAIN/privkey.pem" nginx-rproxy.key

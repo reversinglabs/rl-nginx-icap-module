@@ -1,0 +1,89 @@
+services:
+  # nginx_ce/nginx_plus, not "nginx" — that's only a network alias (see
+  # x-nginx_base in docker-compose.yml), not a real service name, so a
+  # block literally named "nginx" here would create an unrelated new
+  # service with no image/build instead of extending either variant.
+  # Defining both is safe: only whichever one is in the active profile set
+  # actually gets instantiated, the other's override is simply unused.
+  nginx_ce:
+    volumes:
+      - nginx_logs:/var/log/nginx
+
+  nginx_plus:
+    volumes:
+      - nginx_logs:/var/log/nginx
+
+  backend:
+    volumes:
+      - backend_logs:/var/log/backend
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4
+    command: --nginx.scrape-uri=http://nginx:8081/stub_status
+    expose:
+      - "9113"
+    # No depends_on: nginx_ce/nginx_plus are mutually exclusive (only one is
+    # ever in the active profile set) — naming either unconditionally would
+    # break `up` when the other is active (see the same reasoning on
+    # "tester" in docker-compose.yml). Harmless to omit: this reaches nginx
+    # via the "nginx" network alias at scrape time, not a startup-order
+    # dependency, and the exporter retries scrapes on its own.
+
+  promtail:
+    image: grafana/promtail:3.5.0
+    volumes:
+      - nginx_logs:/var/log/nginx:ro
+      - backend_logs:/var/log/backend:ro
+      - ./observability/promtail/config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  loki:
+    image: grafana/loki:3.5.0
+    # Not published to the host — only Grafana/promtail need it, both
+    # reachable via the compose network; expose (not ports) keeps it that
+    # way while still letting depends_on/DNS resolve it.
+    expose:
+      - "3100"
+    volumes:
+      - ./observability/loki/config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/config.yml
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    # Not published to the host — only Grafana needs it, reachable via the
+    # compose network; expose (not ports) keeps it that way.
+    expose:
+      - "9090"
+    volumes:
+      - ./observability/prometheus/config.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml
+    depends_on:
+      - backend
+      - nginx-exporter
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+      - prometheus
+
+volumes:
+  nginx_logs:
+  backend_logs:
+  loki_data:
+  prometheus_data:
+  grafana_data:

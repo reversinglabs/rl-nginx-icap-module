@@ -1,0 +1,66 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: icap
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx-icap
+          __path__: /var/log/nginx/icap.log
+
+    pipeline_stages:
+      # Format: 2026/06/29 08:33:59 [info] 13#13: 08:33:59.397 detect-icap: <message>
+      - regex:
+          expression: '^(?P<date>\d{4}/\d{2}/\d{2}) \d{2}:\d{2}:\d{2} \[(?P<level>\w+)\] \d+#\d+: (?P<ms_ts>\d{2}:\d{2}:\d{2}\.\d{3}) detect-icap: (?P<msg>.+)$'
+
+      # nginx's own prefix only has second precision; the ms-precision clock
+      # lacks a date by itself, so stitch it back together.
+      - template:
+          source: full_ts
+          template: '{{ .date }} {{ .ms_ts }}'
+
+      # Rewrite log timestamp using the ms-precision time instead of nginx's.
+      - timestamp:
+          source: full_ts
+          format: '2006/01/02 15:04:05.000'
+          location: UTC
+
+      # Lines such as "Starting ICAP exchange ..." won't match and get no
+      # mode label.
+      - regex:
+          source: msg
+          expression: '^(?P<mode>REQMOD|RESPMOD)\s'
+
+      - labels:
+          level:
+          mode:
+
+  - job_name: backend
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: backend
+          __path__: /var/log/backend/backend.log
+
+    pipeline_stages:
+      # Format: 2026-06-29 08:33:59,397 INFO RECEIVED 1234 bytes
+      - regex:
+          expression: '^(?P<py_ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (?P<level>\w+) (?P<msg>.+)$'
+
+      - timestamp:
+          source: py_ts
+          format: '2006-01-02 15:04:05,000'
+          location: UTC
+
+      - labels:
+          level:

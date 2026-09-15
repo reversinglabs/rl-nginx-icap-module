@@ -1,0 +1,28 @@
+# Local/dev certificate source — generates a self-signed cert+key if one
+# isn't already in the shared nginx_certs volume, then exits. The
+# self-signed equivalent of docker-compose-certbot.yml (never include both
+# at once):
+#   docker compose -f docker-compose.yml -f docker-compose-certgen.yml up -d --build
+services:
+  certificates:
+    # Ships openssl already installed — plain alpine + "apk add openssl" at
+    # runtime hits this environment's HTTPS-interception/firewall on the
+    # alpine CDN (see the same workaround in Dockerfile.nginx).
+    image: alpine/openssl:latest
+    volumes:
+      - nginx_certs:/certs
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -eu
+        if [ ! -f /certs/nginx-selfsigned.crt ] || [ ! -f /certs/nginx-selfsigned.key ]; then
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -subj "/CN=localhost" \
+            -keyout /certs/nginx-selfsigned.key \
+            -out /certs/nginx-selfsigned.crt
+          chmod 644 /certs/nginx-selfsigned.crt
+        fi
+        cd /certs
+        find . -type l \( -name '*.crt' -o -name '*.key' \) -exec unlink {} \;
+        ln -s ./nginx-selfsigned.crt nginx-rproxy.crt
+        ln -s ./nginx-selfsigned.key nginx-rproxy.key

@@ -1,0 +1,1529 @@
+{
+  "annotations": { "list": [] },
+  "description": "Nginx ICAP Module — request timing and throughput extracted from icap.log",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+
+    {
+      "type": "row",
+      "id": 1,
+      "title": "REQMOD",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "Last ICAP Connect",
+      "description": "DNS + TCP time to establish ICAP connection (from REQMOD timing line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 5 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `connect (?P<connect_ms>[0-9]+)ms` | unwrap connect_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "connect",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "Last ICAP Send",
+      "description": "Time to stream request body to ICAP server",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 5 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5000 },
+              { "color": "red", "value": 20000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `send (?P<send_ms>[0-9]+)ms` | unwrap send_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "send",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Last ICAP Read",
+      "description": "Time to receive ICAP verdict after sending body",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 5 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2000 },
+              { "color": "red", "value": 10000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `read (?P<read_ms>[0-9]+)ms` | unwrap read_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "read",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 5,
+      "title": "Last Total ICAP Time",
+      "description": "connect + send + read (from REQMOD timing line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5000 },
+              { "color": "red", "value": 30000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `total (?P<total_ms>[0-9]+)ms` | unwrap total_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "total",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 7,
+      "title": "Last Body Size",
+      "description": "Request body bytes sent to ICAP",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 1 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `body (?P<body_bytes>[0-9]+) bytes` | unwrap body_bytes [$__range])",
+          "queryType": "range",
+          "legendFormat": "body",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 9,
+      "title": "Last Buffering Time",
+      "description": "Time to buffer request body from client before ICAP scan (from 'REQMOD buffering done' line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null  },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red",    "value": 60000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `buffering done` | regexp `in (?P<buf_ms>[0-9]+)ms` | unwrap buf_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "buffering",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 8,
+      "title": "Last ICAP Verdict",
+      "description": "ICAP status code from last REQMOD verdict line — 204 (No Modifications) = green, anything else = red",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 5 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 204  },
+              { "color": "red",   "value": 205  }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `verdict` | regexp `\\((?P<status>[0-9]+)` | unwrap status [$__range])",
+          "queryType": "range",
+          "legendFormat": "status",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 32,
+      "title": "REQMOD Timing",
+      "description": "Left axis (stacked): buffering time + total ICAP time. Right axis: body size. Stacked bar height = buffering + ICAP total.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 100,
+            "barMaxWidth": 20,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisPlacement": "left",
+            "axisWidth": 70
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "body bytes" },
+            "properties": [
+              { "id": "unit",                 "value": "decbytes"                        },
+              { "id": "custom.axisPlacement", "value": "right"                           },
+              { "id": "custom.axisWidth",     "value": 70                                },
+              { "id": "custom.axisSoftMin",   "value": 0                                 },
+              { "id": "custom.stacking",      "value": { "mode": "none", "group": "A" } },
+              { "id": "custom.drawStyle",     "value": "points"                          },
+              { "id": "custom.showPoints",    "value": "always"                          },
+              { "id": "custom.pointSize",     "value": 5                                 },
+              { "id": "custom.lineWidth",     "value": 0                                 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `buffering done` | regexp `in (?P<buf_ms>[0-9]+)ms` | unwrap buf_ms [$__interval])",
+          "queryType": "range",
+          "legendFormat": "buffering ms",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `total (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "total ICAP ms",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `buffering done` | regexp `(?P<body_bytes>[0-9]+) bytes` | unwrap body_bytes [$__interval])",
+          "queryType": "range",
+          "legendFormat": "body bytes",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 6,
+      "title": "REQMOD ICAP Timing Breakdown",
+      "description": "Stacked bars: connect + send + read = total ICAP time",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 17 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 100,
+            "barMaxWidth": 20,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `connect (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "connect",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `send (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "send",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"REQMOD\"} |= `timing` | regexp `read (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "read",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "id": 10,
+      "title": "RESPMOD",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 }
+    },
+
+    {
+      "type": "stat",
+      "id": 40,
+      "title": "Last Body Size",
+      "description": "Response body bytes sent to ICAP (from RESPMOD buffering done line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 27 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `buffering done` | regexp `(?P<body_bytes>[0-9]+) bytes` | unwrap body_bytes [$__range])",
+          "queryType": "range",
+          "legendFormat": "body",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 41,
+      "title": "Last Buffering Time",
+      "description": "Time to buffer response body from backend before ICAP scan (from 'RESPMOD buffering done' line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 27 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null  },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red",    "value": 60000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `buffering done` | regexp `in (?P<buf_ms>[0-9]+)ms` | unwrap buf_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "buffering",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 42,
+      "title": "Last Total ICAP Time",
+      "description": "connect + send + read (from RESPMOD timing line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 27 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5000 },
+              { "color": "red", "value": 30000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `total (?P<total_ms>[0-9]+)ms` | unwrap total_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "total",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 43,
+      "title": "Last ICAP Verdict",
+      "description": "ICAP status code from last RESPMOD verdict line — 204 (No Modifications) = green, anything else = red",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 31 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 204  },
+              { "color": "red",   "value": 205  }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `verdict` | regexp `\\((?P<status>[0-9]+)` | unwrap status [$__range])",
+          "queryType": "range",
+          "legendFormat": "status",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 44,
+      "title": "Last ICAP Connect",
+      "description": "DNS + TCP time to establish ICAP connection (from RESPMOD timing line)",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 31 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `connect (?P<connect_ms>[0-9]+)ms` | unwrap connect_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "connect",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 45,
+      "title": "Last ICAP Send",
+      "description": "Time to stream response body to ICAP server",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 31 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5000 },
+              { "color": "red", "value": 20000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `send (?P<send_ms>[0-9]+)ms` | unwrap send_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "send",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 46,
+      "title": "Last ICAP Read",
+      "description": "Time to receive ICAP verdict after sending response body",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 31 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2000 },
+              { "color": "red", "value": 10000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "last_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `read (?P<read_ms>[0-9]+)ms` | unwrap read_ms [$__range])",
+          "queryType": "range",
+          "legendFormat": "read",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 47,
+      "title": "RESPMOD Timing",
+      "description": "Left axis (stacked): buffering time + total ICAP time. Right axis: body size. Stacked bar height = buffering + ICAP total.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 35 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 100,
+            "barMaxWidth": 20,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never",
+            "axisPlacement": "left",
+            "axisWidth": 70
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "body bytes" },
+            "properties": [
+              { "id": "unit",                 "value": "decbytes"                        },
+              { "id": "custom.axisPlacement", "value": "right"                           },
+              { "id": "custom.axisWidth",     "value": 70                                },
+              { "id": "custom.axisSoftMin",   "value": 0                                 },
+              { "id": "custom.stacking",      "value": { "mode": "none", "group": "A" } },
+              { "id": "custom.drawStyle",     "value": "points"                          },
+              { "id": "custom.showPoints",    "value": "always"                          },
+              { "id": "custom.pointSize",     "value": 5                                 },
+              { "id": "custom.lineWidth",     "value": 0                                 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `buffering done` | regexp `in (?P<buf_ms>[0-9]+)ms` | unwrap buf_ms [$__interval])",
+          "queryType": "range",
+          "legendFormat": "buffering ms",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `total (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "total ICAP ms",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `buffering done` | regexp `(?P<body_bytes>[0-9]+) bytes` | unwrap body_bytes [$__interval])",
+          "queryType": "range",
+          "legendFormat": "body bytes",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 48,
+      "title": "RESPMOD ICAP Timing Breakdown",
+      "description": "Stacked bars: connect + send + read = total ICAP time",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 43 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 100,
+            "barMaxWidth": 20,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `connect (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "connect",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `send (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "send",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\",mode=\"RESPMOD\"} |= `timing` | regexp `read (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "read",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "id": 20,
+      "title": "ICAP",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 }
+    },
+
+    {
+      "type": "timeseries",
+      "id": 21,
+      "title": "DNS & TCP Connect Times",
+      "description": "Extracted from 'Starting ICAP exchange' log lines, stacked by phase and mode",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 100,
+            "barMaxWidth": 20,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\"} |= `Starting ICAP exchange` |= `REQMOD` | regexp `DNS (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "DNS REQMOD",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\"} |= `Starting ICAP exchange` |= `REQMOD` | regexp `TCP (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "TCP REQMOD",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\"} |= `Starting ICAP exchange` |= `RESPMOD` | regexp `DNS (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "DNS RESPMOD",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"nginx-icap\"} |= `Starting ICAP exchange` |= `RESPMOD` | regexp `TCP (?P<v>[0-9]+)ms` | unwrap v [$__interval])",
+          "queryType": "range",
+          "legendFormat": "TCP RESPMOD",
+          "refId": "D"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "id": 50,
+      "title": "Backend (Prometheus)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 61 }
+    },
+
+    {
+      "type": "stat",
+      "id": 51,
+      "title": "Backend Instances Up",
+      "description": "Number of backend replicas Prometheus currently has as scrape targets",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 62 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 1    }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(up{job=\"backend\"})",
+          "instant": true,
+          "range": false,
+          "legendFormat": "up",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 52,
+      "title": "Requests (5m)",
+      "description": "Total backend requests handled in the last 5 minutes, across all replicas and endpoints",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 62 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(increase(backend_requests_total[5m]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "requests",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 53,
+      "title": "Avg Request Duration (5m)",
+      "description": "sum(rate(backend_request_duration_seconds_sum)) / sum(rate(backend_request_duration_seconds_count)) over the last 5 minutes",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 62 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 0.1  },
+              { "color": "red",    "value": 1    }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(backend_request_duration_seconds_sum[5m])) / sum(rate(backend_request_duration_seconds_count[5m]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "avg",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 54,
+      "title": "Request Rate by Method / Endpoint",
+      "description": "sum(rate(backend_requests_total[$__rate_interval])) by (method, endpoint)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 66 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": { "mode": "none", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(backend_requests_total[$__rate_interval])) by (method, endpoint)",
+          "queryType": "range",
+          "legendFormat": "{{method}} {{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 55,
+      "title": "Request Duration Quantiles (p50 / p95 / p99)",
+      "description": "histogram_quantile over backend_request_duration_seconds_bucket, aggregated across all replicas/endpoints",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 74 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "stacking": { "mode": "none", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(backend_request_duration_seconds_bucket[$__rate_interval])) by (le))",
+          "queryType": "range",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(backend_request_duration_seconds_bucket[$__rate_interval])) by (le))",
+          "queryType": "range",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(backend_request_duration_seconds_bucket[$__rate_interval])) by (le))",
+          "queryType": "range",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 56,
+      "title": "Requests In Progress by Instance",
+      "description": "Three views of concurrency per backend replica. \"current\" (backend_requests_in_progress) is the instant-of-scrape value, useful for live saturation but blind to anything between scrapes. \"peak\" (backend_requests_in_progress_peak) is the high-water mark since the last scrape and resets to the post-scrape current value rather than 0, so a spike that starts and ends between two scrapes still shows up — alert on this, not on current. \"avg\" applies Little's Law (rate(backend_request_duration_seconds_sum[1m])) to get the true time-weighted average concurrency over the window.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 82 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": { "mode": "none", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "always",
+            "pointSize": 4
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "/peak$/" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "bars" },
+              { "id": "custom.fillOpacity", "value": 30 },
+              { "id": "custom.lineWidth", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "/avg$/" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "backend_requests_in_progress",
+          "queryType": "range",
+          "legendFormat": "{{instance}} current",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "backend_requests_in_progress_peak",
+          "queryType": "range",
+          "legendFormat": "{{instance}} peak",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (instance) (rate(backend_request_duration_seconds_sum[1m]))",
+          "queryType": "range",
+          "legendFormat": "{{instance}} avg",
+          "refId": "C"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 57,
+      "title": "Byte Throughput (bytes/sec)",
+      "description": "sum(rate(backend_bytes_received_total[$__rate_interval])) by (method, endpoint)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 90 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": { "mode": "none", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(backend_bytes_received_total[$__rate_interval])) by (method, endpoint)",
+          "queryType": "range",
+          "legendFormat": "{{method}} {{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "id": 58,
+      "title": "Nginx (Prometheus)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 98 }
+    },
+
+    {
+      "type": "stat",
+      "id": 59,
+      "title": "Conn. Accepted (5m rate)",
+      "description": "rate(nginx_connections_accepted[$__rate_interval]) — connections/sec nginx has accepted from the OS socket queue. Query covers both nginx_connections_accepted and _accepted_total since Prometheus appends _total to bare counter names depending on scrape negotiation.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 99 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(nginx_connections_accepted[$__rate_interval])",
+          "instant": true,
+          "range": false,
+          "legendFormat": "accepted/sec",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 60,
+      "title": "Conn. Waiting",
+      "description": "nginx_connections_waiting — idle keep-alive connections open but not currently reading or writing",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 99 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nginx_connections_waiting)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "waiting",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 61,
+      "title": "Conn. Dropped",
+      "description": "sum(nginx_connections_accepted) - sum(nginx_connections_handled) — cumulative connections nginx refused because worker_connections was exhausted. Should stay at 0; any growth means the worker connection limit was hit.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 99 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nginx_connections_accepted_total or nginx_connections_accepted) - sum(nginx_connections_handled_total or nginx_connections_handled)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "dropped",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "stat",
+      "id": 62,
+      "title": "Requests Total (5m rate)",
+      "description": "sum(rate(nginx_http_requests_total[5m])) — requests/sec served by nginx, from the stub_status request counter",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 99 },
+      "options": {
+        "reduceOptions": { "values": false, "calcs": ["lastNotNull"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(nginx_http_requests_total[5m]))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "requests/sec",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "id": 63,
+      "title": "Nginx Connections & Requests",
+      "description": "Trend view of conn. accepted (rate), conn. waiting (gauge), conn. dropped (cumulative accepted - handled), and req. total (rate) — same metrics as the stat tiles above, over time.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 103 },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "stacking": { "mode": "none", "group": "A" },
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "dropped" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "bars" },
+              { "id": "custom.fillOpacity", "value": 30 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate((nginx_connections_accepted_total or nginx_connections_accepted)[$__rate_interval]))",
+          "queryType": "range",
+          "legendFormat": "accepted/sec",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nginx_connections_waiting)",
+          "queryType": "range",
+          "legendFormat": "waiting",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(nginx_connections_accepted_total or nginx_connections_accepted) - sum(nginx_connections_handled_total or nginx_connections_handled)",
+          "queryType": "range",
+          "legendFormat": "dropped",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(nginx_http_requests_total[$__rate_interval]))",
+          "queryType": "range",
+          "legendFormat": "requests/sec",
+          "refId": "D"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "id": 30,
+      "title": "Log Stream",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 111 }
+    },
+
+    {
+      "type": "logs",
+      "id": 31,
+      "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 112 },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"nginx-icap\", level=~\"$level\"}",
+          "queryType": "range",
+          "legendFormat": "",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"backend\", service_name=\"backend\", level=~\"$level\"} != `GET /metrics`",
+          "queryType": "range",
+          "legendFormat": "",
+          "refId": "B"
+        }
+      ]
+    }
+
+  ],
+
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["nginx", "icap"],
+  "templating": {
+    "list": [
+      {
+        "name": "level",
+        "label": "Log Level",
+        "type": "custom",
+        "description": "nginx and the backend use different level vocabularies (info/warn/error vs INFO/WARNING/ERROR) — each option is a case-insensitive regex so one dropdown covers both streams.",
+        "query": "All : .*,Debug : (?i)^debug$,Info : (?i)^info$,Warn : (?i)^warn(ing)?$,Error : (?i)^error$",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "All", "value": ".*" },
+        "options": [
+          { "text": "All",   "value": ".*",              "selected": true },
+          { "text": "Debug", "value": "(?i)^debug$" },
+          { "text": "Info",  "value": "(?i)^info$" },
+          { "text": "Warn",  "value": "(?i)^warn(ing)?$" },
+          { "text": "Error", "value": "(?i)^error$" }
+        ],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Nginx ICAP Module",
+  "uid": "nginx-icap-obs",
+  "version": 1
+}

@@ -1,0 +1,57 @@
+ARG UBUNTU_VERSION=24.04
+
+FROM ubuntu:${UBUNTU_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Filename looked up inside the `nginx-plus-sw-root` additional build
+# context (see docker-compose.yml's NGINX_PLUS_DEB/NGINX_PLUS_SW_ROOT) --
+# together they let the .deb live anywhere on disk, under any name, rather
+# than inside this project.
+ARG NGINX_PLUS_DEB
+# NGINX Plus, installed from that external .deb rather than NGINX's apt
+# repo -- that repo requires a client cert/key most build environments
+# won't have. gettext-base provides envsubst (used by CMD below); dpkg
+# alone won't resolve the .deb's own runtime deps, so the failed `dpkg -i`
+# is immediately patched up by `apt-get -f`.
+COPY --from=nginx-plus-sw-root ${NGINX_PLUS_DEB} /tmp/nginx-plus.deb
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gettext-base \
+    && (dpkg -i /tmp/nginx-plus.deb || true) \
+    && apt-get install -y -f --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* /tmp/nginx-plus.deb \
+    # Bare ubuntu:24.04 (unlike Dockerfile.nginx's Docker Hub base) doesn't
+    # do this itself -- without it access.log/error.log/icap.log are plain
+    # files and `docker logs` sees nothing.
+    && mkdir -p /var/log/nginx \
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log \
+    && ln -sf /dev/stdout /var/log/nginx/icap.log
+
+# This .deb's nginx expects dynamic modules under /usr/lib/nginx/modules
+# (Dockerfile.nginx's Docker Hub image uses /etc/nginx/modules instead) --
+# nginx.docker.conf's `load_module modules/...` resolves against whichever
+# path nginx was built with.
+#
+# The .so is prebuilt by the sibling nginx-icap-module-src checkout, not
+# compiled here — copy it into module/ngx_http_detect_icap_module.so before
+# building (see README.md's Setup step 1).
+COPY module/ngx_http_detect_icap_module.so \
+     /usr/lib/nginx/modules/ngx_http_detect_icap_module.so
+COPY nginx.docker.conf /etc/nginx/nginx.conf.template
+
+# Cert + key for the HTTPS listener (8443) are not baked into this image —
+# see the "certificates" service in docker-compose.yml.
+
+EXPOSE 8080 8443
+# `docker stop` sends SIGTERM by default, which nginx treats as an
+# immediate shutdown (in-flight requests dropped); SIGQUIT is nginx's
+# graceful shutdown signal. The Docker Hub nginx image sets this itself;
+# this one builds on bare ubuntu:24.04, so it's set explicitly.
+STOPSIGNAL SIGQUIT
+
+# envsubst replaces only the ICAP_* variables; nginx variables like $host are left intact.
+CMD ["/bin/sh", "-c", \
+    "envsubst '${ICAP_SCHEME}${ICAP_HOSTNAME}${ICAP_PORT}${ICAP_SERVICE}${ICAP_AUTH}${ICAP_SSL_TRUSTED_CERT}${ICAP_SSL_NAME}' \
+        < /etc/nginx/nginx.conf.template \
+        > /etc/nginx/nginx.conf \
+     && nginx -g 'daemon off;'"]

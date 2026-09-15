@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: backend
+    # dns_sd_configs, not static_configs: Docker's embedded DNS returns one
+    # A record per backend replica, so this scrapes each individually
+    # instead of round-robining through a single hostname.
+    dns_sd_configs:
+      - names:
+          - backend
+        type: A
+        port: 8000
+        refresh_interval: 15s
+
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
