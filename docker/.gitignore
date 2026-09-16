@@ -1,0 +1,5 @@
+# Do not track .env* files
+.env*
+
+!.env-default
+
