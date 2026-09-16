@@ -162,6 +162,26 @@ If Grafana/observability is up, the "ICAP Overview" dashboard
 throughput, REQMOD/RESPMOD outcomes (parsed from nginx's `icap.log` by
 Promtail), and backend metrics.
 
+## Limitations
+
+### 1. Non-blocking upstream API
+
+| Impact | Trigger | Status |
+|--------|---------|--------|
+| One slow or hung ICAP server stalls an entire worker — and every other connection it multiplexes — for up to `connect + send + read` timeout. The shipped config sets `detect_icap_read_timeout 3m`, so a handful of slow requests can wedge the gateway for minutes. Documented by the authors as a known limitation. | Any request to a scanned location while the ICAP server is slow, overloaded, or unreachable; also reachable by an attacker who can slow the ICAP path. | Will not be implemented for PoC. |
+
+### 2. In-memory-only body buffering, fail-closed
+
+The module never streams to ICAP — it buffers the whole request/response
+body in memory first, and only scans what nginx itself already held in
+memory. Once nginx spills a body to a temp file (past
+`client_body_buffer_size` for requests, or `proxy_buffers` for responses),
+the two directions diverge:
+
+- REQMOD (`ngx_http_detect_icap_collect_body`) detects the file-backed
+  buffer and fails **closed** — `500 Internal Server Error`, the request
+  never reaches the backend.
+
 ## Troubleshooting
 
 - **`nginx: [emerg] module ... is not binary compatible`** — `NGINX_VERSION`
