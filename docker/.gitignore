@@ -1,5 +1,6 @@
 # Do not track .env* files
 .env*
+*.pem
 
 !.env-default
 
