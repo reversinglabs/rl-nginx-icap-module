@@ -116,7 +116,7 @@ Base stack (nginx using self-signed TLS + backend):
 docker compose \
       -f docker-compose.yml \
       -f docker-compose-certgen.yml \
-      up -d
+      up -d --build
 ```
 
 With observability included:
@@ -126,7 +126,7 @@ docker compose \
       -f docker-compose.yml \
       -f docker-compose-certgen.yml \
       -f docker-compose.observability.yml \
-      up -d
+      up -d --build
 ```
 
 Test environment:
