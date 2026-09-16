@@ -79,6 +79,19 @@ Also referenced from here, one level up at the repo root:
      use `host.docker.internal` (Linux: add `extra_hosts:
      ["host.docker.internal:host-gateway"]` to the `nginx` service, or use
      the host's LAN IP).
+   
+   ICAP TLS requirements:
+   - if ICAP server has self-signed certificate use following steps
+     ```bash
+     # fetch server certificate
+     echo | openssl s_client -connect <icap-server>:<icap-server TLS port> -servername <server-name> 2>/dev/null | openssl x509 -outform PEM > icap-server-certificate.pem
+     # display certificate in plain text format
+     openssl x509 -in icap-server-certificate.pem -noout -text
+     # extract CN from certificate
+     openssl x509 -in icap-server-certificate.pem -noout -subject | sed -n 's/.*CN\s*=\s*\([^,/]*\).*/\1/p'
+     ```
+     - ICAP_SSL_TRUSTED_CERT=icap-server-certificate.pem
+     - ICAP_SSL_NAME=<extracted CN name>
 
    Specific requirements:
    - CE
