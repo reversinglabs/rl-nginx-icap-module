@@ -77,7 +77,6 @@ services:
       dockerfile: docker/Dockerfile.nginx
     volumes:
       - nginx_certs:/etc/nginx/ssl:ro
-      - ./${ICAP_SSL_TRUSTED_CERT}:/etc/nginx/icap-ca.crt:ro
     profiles:
       - ce
 
@@ -99,7 +98,6 @@ services:
         nginx-plus-sw-root: "${NGINX_PLUS_SW_ROOT:?NGINX_PLUS_SW_ROOT not set — see .env-default}"
     volumes:
       - nginx_certs:/etc/nginx/ssl:ro
-      - ./${ICAP_SSL_TRUSTED_CERT}:/etc/nginx/icap-ca.crt:ro
       - ${NGINX_PLUS_LICENSE:?NGINX_PLUS_LICENSE not set — see .env-default}:/etc/nginx/license.jwt:ro
     profiles:
       - plus

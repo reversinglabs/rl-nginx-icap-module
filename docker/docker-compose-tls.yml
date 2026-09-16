@@ -1,0 +1,10 @@
+# Adds the ICAP-over-TLS trusted CA certificate bind mount — only include
+# this file (via -f) when ICAP_SCHEME=https.
+services:
+  nginx_ce:
+    volumes:
+      - ./${ICAP_SSL_TRUSTED_CERT:?ICAP_SSL_TRUSTED_CERT not set — see .env-default}:/etc/nginx/icap-ca.crt:ro
+
+  nginx_plus:
+    volumes:
+      - ./${ICAP_SSL_TRUSTED_CERT:?ICAP_SSL_TRUSTED_CERT not set — see .env-default}:/etc/nginx/icap-ca.crt:ro

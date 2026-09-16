@@ -14,6 +14,7 @@ Commands below assume you're `cd`'d into this `docker/` directory.
 |--------------------------------------|--------------------------------------------------------------------|
 | `docker-compose.yml`                 | nginx (ce + plus variants), backend, certificates (self-signed TLS) |
 | `docker-compose-certgen.yml`         | self-signed cert generator (never combine with `docker-compose-certbot.yml`) |
+| `docker-compose-tls.yml`             | adds the ICAP-over-TLS trusted CA cert mount — include only when `ICAP_SCHEME=https` |
 | `docker-compose.observability.yml`   | nginx-exporter, promtail, loki, prometheus, grafana                 |
 | `Dockerfile.nginx`                   | `nginx_ce`: Docker Hub nginx + pre-built module                     |
 | `Dockerfile.nginx-plus`              | `nginx_plus`: NGINX Plus (external `.deb`) + pre-built module       |
@@ -92,6 +93,13 @@ Also referenced from here, one level up at the repo root:
      ```
      - ICAP_SSL_TRUSTED_CERT=icap-server-certificate.pem
      - ICAP_SSL_NAME=<extracted CN name>
+   - The cert file above (`icap-server-certificate.pem`, next to whichever
+     `.env` you symlinked, i.e. this `docker/` directory) only actually gets
+     into the container if you also add `-f docker-compose-tls.yml` to every
+     `docker compose` command below — it's a separate override, not part of
+     the base `docker-compose.yml`, specifically so a non-TLS run (`ICAP_SCHEME=http`,
+     `ICAP_SSL_TRUSTED_CERT` unset) never needs this bind mount at all. See
+     [Running](#running) for exactly where it goes.
 
    Specific requirements:
    - CE
@@ -129,6 +137,19 @@ docker compose \
       up -d --build
 ```
 
+With ICAP over TLS (`ICAP_SCHEME=https` in your `.env` — see [ICAP TLS
+requirements](#setup) in Setup) — add `-f docker-compose-tls.yml`, combine
+with the others above as needed:
+
+```bash
+docker compose \
+      -f docker-compose.yml \
+      -f docker-compose-certgen.yml \
+      -f docker-compose-tls.yml \
+      -f docker-compose.observability.yml \
+      up -d --build
+```
+
 Test environment:
 
 ```bash
@@ -141,7 +162,9 @@ state):
 ```bash
 docker compose -f docker-compose.yml \
                -f docker-compose-certgen.yml \
-               -f docker-compose.observability.yml down -v
+               -f docker-compose-tls.yml \
+               -f docker-compose.observability.yml \
+               down -v
 ```
 
 ## Endpoints
@@ -221,3 +244,11 @@ the two directions diverge:
   (see `docker-compose.yml`'s `x-nginx_base`), not a real service name;
   `docker compose exec`/`logs` need the actual one, `nginx_ce` or
   `nginx_plus`, whichever profile is active.
+- **`nginx: [emerg] ... failed to load detect_icap_ssl_trusted_certificate
+  "/etc/nginx/icap-ca.crt"`** (`ICAP_SCHEME=https`) — you forgot `-f
+  docker-compose-tls.yml` on this `up`/`build`, so the CA cert never got
+  bind-mounted in. Add it (see [Running](#running)). If you *did* include it
+  and just changed `nginx.docker.conf` or `docker-compose*.yml`, also make
+  sure you rebuilt (`--build`) — `nginx.docker.conf` is baked into the image
+  at build time, so editing it on disk alone has no effect on an
+  already-built image.
