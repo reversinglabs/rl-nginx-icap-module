@@ -141,18 +141,20 @@ docker compose -f docker-compose.yml \
 
 ## Verifying it's working
 
+Execute following commands from host machine:
+
 ```bash
 # nginx + module loaded, backend reachable (bypasses the ICAP path):
-curl -s http://localhost:80/clean.txt   # served from ../files/, proxied through nginx
-
-# stub_status (only reachable inside the docker network, e.g. from nginx-exporter):
-docker compose exec nginx curl -s http://localhost:8081/stub_status
-
-# module actually loaded (check nginx's error log for the module version line):
-docker compose logs nginx | grep -i module
+# Note: assumes SAMPLES_FOLDER is set to ../files/
+curl -s http://localhost/clean.txt   # served from ../files/, proxied through nginx
 
 # traffic through the ICAP path — requires a live ICAP server:
-curl -s -X POST --data-binary "clean upload" http://localhost:80/anything
+curl -s -X POST --data-binary "clean upload" http://localhost/up
+
+# EICAR (../files/eicar, the standard AV test string — not real malware)
+# should be REJECTED via REQMOD; expect 403, not 200:
+curl -s -o /dev/null -w "%{http_code}\n" \
+    -X POST --data-binary @../files/eicar http://localhost/up
 ```
 
 If Grafana/observability is up, the "ICAP Overview" dashboard
@@ -180,4 +182,9 @@ Promtail), and backend metrics.
   `NGINX_PLUS_SW_ROOT`, not this repo).
 - **ICAP timeouts / 502s** — `ICAP_HOSTNAME`/`ICAP_PORT` isn't reachable
   from inside the `nginx` container; test with
-  `docker compose exec nginx sh -c 'curl -v telnet://$ICAP_HOSTNAME:$ICAP_PORT'`.
+  `docker compose exec nginx_ce sh -c 'curl -v telnet://$ICAP_HOSTNAME:$ICAP_PORT'`
+  (substitute `nginx_plus` if that's the active profile).
+- **`service "nginx" is not running`** — `nginx` is only a network *alias*
+  (see `docker-compose.yml`'s `x-nginx_base`), not a real service name;
+  `docker compose exec`/`logs` need the actual one, `nginx_ce` or
+  `nginx_plus`, whichever profile is active.
