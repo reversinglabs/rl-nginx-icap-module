@@ -66,23 +66,21 @@ Also referenced from here, one level up at the repo root:
    ln -sf .env-dev .env
    ```
 
-   Edit whichever file you symlinked in .env:
+   Edit whichever file you symlinked to .env:
+   
+   Common requirements
    - `COMPOSE_PROFILES` — include
      - `ce` for the Docker-Hub-nginx variant
      - `plus` for NGINX Plus
      - `test` for the `tester` service
      - `local-icap` for a bundled dummy ICAP server (skip it if you're
        pointing at a real one via `ICAP_HOSTNAME` below)
+   - `ICAP_HOSTNAME` / `ICAP_PORT` / `ICAP_SCHEME` / `ICAP_SERVICE` — your ICAP server. If it's on the Docker host 
+      rather than reachable by DNS, use `host.docker.internal` (Linux: add `extra_hosts:
+      ["host.docker.internal:host-gateway"]` to the `nginx` service, or use the host's LAN IP).
 
-   Common requirements:
-   - `ICAP_HOSTNAME` / `ICAP_PORT` / `ICAP_SCHEME` / `ICAP_SERVICE` — your
-     ICAP server. If it's on the Docker host rather than reachable by DNS,
-     use `host.docker.internal` (Linux: add `extra_hosts:
-     ["host.docker.internal:host-gateway"]` to the `nginx` service, or use
-     the host's LAN IP).
-   
    ICAP TLS requirements:
-   - if ICAP server has self-signed certificate use following steps
+   - if ICAP server uses self-signed certificate use following steps
      ```bash
      # fetch server certificate
      echo | openssl s_client -connect <icap-server>:<icap-server TLS port> -servername <server-name> 2>/dev/null | openssl x509 -outform PEM > icap-server-certificate.pem
@@ -93,28 +91,21 @@ Also referenced from here, one level up at the repo root:
      ```
      - ICAP_SSL_TRUSTED_CERT=icap-server-certificate.pem
      - ICAP_SSL_NAME=<extracted CN name>
-   - The cert file above (`icap-server-certificate.pem`, next to whichever
-     `.env` you symlinked, i.e. this `docker/` directory) only actually gets
-     into the container if you also add `-f docker-compose-tls.yml` to every
-     `docker compose` command below — it's a separate override, not part of
-     the base `docker-compose.yml`, specifically so a non-TLS run (`ICAP_SCHEME=http`,
-     `ICAP_SSL_TRUSTED_CERT` unset) never needs this bind mount at all. See
+   - The cert file above (`icap-server-certificate.pem`, next to whichever `.env` you symlinked, i.e. this `docker/` 
+     directory) only actually gets into the container if you also add `-f docker-compose-tls.yml` to every
+     `docker compose` command below — it's a separate override, not part of the base `docker-compose.yml`, specifically 
+     so a non-TLS run (`ICAP_SCHEME=http`, `ICAP_SSL_TRUSTED_CERT` unset) never needs this bind mount at all. See
      [Running](#running) for exactly where it goes.
 
    Specific requirements:
    - CE
-     - `NGINX_VERSION` **must** match the nginx core version the `.so` was
-       built against — nginx refuses to load a dynamic module built against
-       a different core version (`module ... is not binary compatible`).
+     - `NGINX_VERSION` **must** match the nginx core version the `.so` was built against — nginx refuses to load a 
+        dynamic module built against a different core version (`module ... is not binary compatible`).
    - Plus
-     - `UBUNTU_VERSION` must match the Ubuntu release of your NGINX Plus
-       `.deb`.
-     - `NGINX_PLUS_SW_ROOT` is the directory holding your NGINX Plus install
-       package(s) — doesn't need to live in this repo.
-     - `NGINX_PLUS_DEB` is a filename (or relative path) resolved against
-       `NGINX_PLUS_SW_ROOT`.
-     - `NGINX_PLUS_LICENSE` is a plain path to your NGINX Plus license
-       `.jwt` (not resolved against `NGINX_PLUS_SW_ROOT`).
+     - `UBUNTU_VERSION` must match the Ubuntu release of your NGINX Plus `.deb`.
+     - `NGINX_PLUS_SW_ROOT` is the directory holding your NGINX Plus install package(s) — doesn't need to live in this repo.
+     - `NGINX_PLUS_DEB` is a filename (or relative path) resolved against `NGINX_PLUS_SW_ROOT`.
+     - `NGINX_PLUS_LICENSE` is a plain path to your NGINX Plus license `.jwt` (not resolved against `NGINX_PLUS_SW_ROOT`).
 
 ## Running
 
@@ -137,9 +128,8 @@ docker compose \
       up -d --build
 ```
 
-With ICAP over TLS (`ICAP_SCHEME=https` in your `.env` — see [ICAP TLS
-requirements](#setup) in Setup) — add `-f docker-compose-tls.yml`, combine
-with the others above as needed:
+With ICAP over TLS (`ICAP_SCHEME=https` in your `.env` — see [ICAP TLS requirements](#setup) in Setup) — add 
+`-f docker-compose-tls.yml`, combine with the others above as needed:
 
 ```bash
 docker compose \
@@ -169,11 +159,11 @@ docker compose -f docker-compose.yml \
 
 ## Endpoints
 
-| Service      | URL                              | Notes                          |
-|--------------|-----------------------------------|---------------------------------|
-| nginx (HTTP) | http://localhost:${NGINX_PORT:-80} | proxies through ICAP to backend |
-| nginx (HTTPS)| https://localhost:${NGINX_HTTPS_PORT:-443} | self-signed cert |
-| Grafana      | http://localhost:3000             | anonymous admin access          |
+| Service      | URL                              | Notes                            |
+|--------------|-----------------------------------|----------------------------------|
+| nginx (HTTP) | http://localhost:${NGINX_PORT:-80} | proxies through ICAP to backend  |
+| nginx (HTTPS)| https://localhost:${NGINX_HTTPS_PORT:-443} | self-signed cert                 |
+| Grafana      | http://localhost:3000             | anonymous admin access           |
 
 ## Verifying it's working
 
@@ -193,10 +183,8 @@ curl -s -o /dev/null -w "%{http_code}\n" \
     -X POST --data-binary @../files/eicar http://localhost/up
 ```
 
-If Grafana/observability is up, the "ICAP Overview" dashboard
-(`observability/grafana/dashboards/icap-overview.json`) shows request
-throughput, REQMOD/RESPMOD outcomes (parsed from nginx's `icap.log` by
-Promtail), and backend metrics.
+If Grafana/observability is up, the "ICAP Overview" dashboard (`observability/grafana/dashboards/icap-overview.json`) shows request
+throughput, REQMOD/RESPMOD outcomes (parsed from nginx's `icap.log` by Promtail), and backend metrics.
 
 ## Limitations
 
@@ -220,35 +208,20 @@ the two directions diverge:
 
 ## Troubleshooting
 
-- **`nginx: [emerg] module ... is not binary compatible`** — `NGINX_VERSION`
-  in `.env` doesn't match the core the `.so` was built against. Rebuild the
-  module for this version, or change `NGINX_VERSION` to match.
-- **`nginx`/`nginx_plus` container exits immediately, or a build error
-  naming `module/ngx_http_detect_icap_module.so`** — either you skipped
-  Setup step 1, or the file/symlink in `../module/` is missing/dangling or
-  misnamed (it must be exactly `ngx_http_detect_icap_module.so`, not e.g.
-  `nginx_http_detect_icap-module.so` — `ngx`/underscore throughout, not
-  `nginx`/hyphen — and its symlink target, if it is one, must be a bare
-  filename, not prefixed with `module/` again).
-- **`nginx_plus` build fails with `failed to get build context
-  nginx-plus-sw-root: ... no such file or directory`, or `NGINX_PLUS_DEB
-  not set`** — `NGINX_PLUS_SW_ROOT`/`NGINX_PLUS_DEB` in your `.env` are
-  either unset or point at a directory/filename that doesn't actually exist;
-  double check both independently (`NGINX_PLUS_DEB` is resolved *inside*
-  `NGINX_PLUS_SW_ROOT`, not this repo).
-- **ICAP timeouts / 502s** — `ICAP_HOSTNAME`/`ICAP_PORT` isn't reachable
-  from inside the `nginx` container; test with
-  `docker compose exec nginx_ce sh -c 'curl -v telnet://$ICAP_HOSTNAME:$ICAP_PORT'`
-  (substitute `nginx_plus` if that's the active profile).
-- **`service "nginx" is not running`** — `nginx` is only a network *alias*
-  (see `docker-compose.yml`'s `x-nginx_base`), not a real service name;
-  `docker compose exec`/`logs` need the actual one, `nginx_ce` or
-  `nginx_plus`, whichever profile is active.
-- **`nginx: [emerg] ... failed to load detect_icap_ssl_trusted_certificate
-  "/etc/nginx/icap-ca.crt"`** (`ICAP_SCHEME=https`) — you forgot `-f
-  docker-compose-tls.yml` on this `up`/`build`, so the CA cert never got
-  bind-mounted in. Add it (see [Running](#running)). If you *did* include it
-  and just changed `nginx.docker.conf` or `docker-compose*.yml`, also make
-  sure you rebuilt (`--build`) — `nginx.docker.conf` is baked into the image
-  at build time, so editing it on disk alone has no effect on an
-  already-built image.
+- **`nginx: [emerg] module ... is not binary compatible`** — `NGINX_VERSION` in `.env` doesn't match the core the `.so` 
+was built against. Rebuild the module for this version, or change `NGINX_VERSION` to match.
+- **`nginx`/`nginx_plus` container exits immediately, or a build error naming `module/ngx_http_detect_icap_module.so`** — 
+either you skipped Setup step 1, or the file/symlink in `../module/` is missing/dangling or misnamed (it must be exactly 
+`ngx_http_detect_icap_module.so`, not e.g. `nginx_http_detect_icap-module.so` — `ngx`/underscore throughout, not `nginx`/hyphen
+— and its symlink target, if it is one, must be a bare filename, not prefixed with `module/` again).
+- **`nginx_plus` build fails with `failed to get build context nginx-plus-sw-root: ... no such file or directory`, or 
+`NGINX_PLUS_DEB not set`** — `NGINX_PLUS_SW_ROOT`/`NGINX_PLUS_DEB` in your `.env` are either unset or point at a directory/filename 
+that doesn't actually exist; double check both independently (`NGINX_PLUS_DEB` is resolved *inside* `NGINX_PLUS_SW_ROOT`, not this repo).
+- **ICAP timeouts / 502s** — `ICAP_HOSTNAME`/`ICAP_PORT` isn't reachable from inside the `nginx` container; test with
+`docker compose exec nginx_ce sh -c 'curl -v telnet://$ICAP_HOSTNAME:$ICAP_PORT'` (substitute `nginx_plus` if that's the active profile).
+- **`service "nginx" is not running`** — `nginx` is only a network *alias* (see `docker-compose.yml`'s `x-nginx_base`), not a real service name;
+  `docker compose exec`/`logs` need the actual one, `nginx_ce` or  `nginx_plus`, whichever profile is active.
+- **`nginx: [emerg] ... failed to load detect_icap_ssl_trusted_certificate "/etc/nginx/icap-ca.crt"`** (`ICAP_SCHEME=https`) — you forgot `-f
+docker-compose-tls.yml` on this `up`/`build`, so the CA cert never got bind-mounted in. Add it (see [Running](#running)). If you *did* include it
+and just changed `nginx.docker.conf` or `docker-compose*.yml`, also make sure you rebuilt (`--build`) — `nginx.docker.conf` is baked into the image
+at build time, so editing it on disk alone has no effect on an already-built image.

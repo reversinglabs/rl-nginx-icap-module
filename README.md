@@ -9,14 +9,14 @@ This project does **not** build the module — it only runs a pre-built
 
 ## Layout
 
-| Path                 | Description                                                          |
-|----------------------|-----------------------------------------------------------------------|
+| Path                 | Description                                                                     |
+|----------------------|---------------------------------------------------------------------------------|
 | `docker/`            | Docker Compose stack (nginx + backend + observability) — see `docker/README.md` |
-| `terraform/`         | AWS deployment (Terraform) — see `terraform/ec2-nginx/README.md`      |
-| `nginx.docker.conf`  | nginx config template (envsubst'd at container start)                 |
-| `module/`            | put the pre-built `.so` here (gitignored)                             |
-| `backend/`           | demo backend source                                                    |
-| `files/`             | sample files the backend serves back over GET                          |
+| `terraform/`         | AWS deployment (Terraform) — see `terraform/ec2-nginx/README.md`                |
+| `nginx.docker.conf`  | nginx config template (envsubst'd at container start)                           |
+| `module/`            | put the pre-built `.so` here (gitignored)                                       |
+| `backend/`           | demo backend source                                                             |
+| `files/`             | sample files the backend serves back over GET                                   |
 
 ## Running it locally in docker stack
 
