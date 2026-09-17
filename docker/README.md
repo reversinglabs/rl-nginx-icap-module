@@ -16,8 +16,8 @@ Commands below assume you're `cd`'d into this `docker/` directory.
 | `docker-compose-certgen.yml`         | self-signed cert generator (never combine with `docker-compose-certbot.yml`) |
 | `docker-compose-tls.yml`             | adds the ICAP-over-TLS trusted CA cert mount — include only when `ICAP_SCHEME=https` |
 | `docker-compose.observability.yml`   | nginx-exporter, promtail, loki, prometheus, grafana                 |
-| `Dockerfile.nginx`                   | `nginx_ce`: Docker Hub nginx + pre-built module                     |
-| `Dockerfile.nginx-plus`              | `nginx_plus`: NGINX Plus (external `.deb`) + pre-built module       |
+| `Dockerfile.nginx`                   | `nginx_ce`: Docker Hub nginx + pre-built module `.deb`              |
+| `Dockerfile.nginx-plus`              | `nginx_plus`: NGINX Plus (external `.deb`) + pre-built module `.deb`|
 | `Dockerfile.backend`                 | demo backend (records uploads, serves files)                       |
 | `.env-default` / `.env-local` / `.env-rl-dev` / `.env-rl-dev-tls` | per-environment config; symlink whichever you want as `.env` |
 | `observability/`                     | Loki / Prometheus / Promtail / Grafana config                      |
@@ -27,7 +27,7 @@ Also referenced from here, one level up at the repo root:
 | Path                   | Description                                            |
 |-------------------------|---------------------------------------------------------|
 | `../nginx.docker.conf`  | nginx config template (envsubst'd at container start)   |
-| `../module/`            | put the pre-built `.so` here (gitignored)               |
+| `../module/`            | put the pre-built `.deb` here (gitignored)               |
 | `../backend/`           | demo backend source                                      |
 | `../files/`             | sample files the backend serves back over GET            |
 
@@ -39,18 +39,26 @@ Also referenced from here, one level up at the repo root:
 
 ## Setup
 
-1. Copy the pre-built module into the repo's `module/` folder (one level up
-   from here) and symlink it to the name the Dockerfiles expect `ngx_http_detect_icap_module.so`.
+1. Copy the pre-built module `.deb` (built by the sibling
+   `nginx-icap-module-src` checkout's `./run.sh build` — see its README)
+   into the repo's `module/` folder (one level up from here) and symlink it
+   to the fixed name the Dockerfiles expect, `nginx-icap-module.deb`.
 
    ```bash
-   # Copy pre-built module
+   # Copy pre-built module package
    mkdir -p ../module
-   cp /path/to/nginx-icap-module-*_amd64.so ../module/
-   
+   cp /path/to/nginx-icap-module_*_amd64.deb ../module/
+
    # Create symlink
    cd ../module
-   ln -sf nginx-icap-module-*_amd64.so ngx_http_detect_icap_module.so
+   ln -sf nginx-icap-module_*_amd64.deb nginx-icap-module.deb
    ```
+
+   Both Dockerfiles install it with `dpkg -i`, which drops the `.so` at
+   `/usr/lib/nginx/modules/ngx_http_detect_icap_module.so` — the same path
+   both the Docker Hub nginx image (via its `/etc/nginx/modules` symlink)
+   and NGINX Plus resolve `load_module modules/...` against, so no other
+   config changes are needed between the two variants.
 
 2. Create env. var file. Directory may contain multiple environment files
    (`.env-default`, `.env-local`, `.env-rl-dev`, `.env-rl-dev-tls`, or any
@@ -210,10 +218,13 @@ the two directions diverge:
 
 - **`nginx: [emerg] module ... is not binary compatible`** — `NGINX_VERSION` in `.env` doesn't match the core the `.so` 
 was built against. Rebuild the module for this version, or change `NGINX_VERSION` to match.
-- **`nginx`/`nginx_plus` container exits immediately, or a build error naming `module/ngx_http_detect_icap_module.so`** — 
+- **`nginx`/`nginx_plus` build fails on `COPY module/nginx-icap-module.deb`, or `dpkg -i` errors `cannot access archive`** — 
 either you skipped Setup step 1, or the file/symlink in `../module/` is missing/dangling or misnamed (it must be exactly 
-`ngx_http_detect_icap_module.so`, not e.g. `nginx_http_detect_icap-module.so` — `ngx`/underscore throughout, not `nginx`/hyphen
-— and its symlink target, if it is one, must be a bare filename, not prefixed with `module/` again).
+`nginx-icap-module.deb` — and its symlink target, if it is one, must be a bare filename, not prefixed with `module/` again).
+- **`dpkg -i` fails with dependency errors** — shouldn't happen (the package declares no hard dependencies; it only
+links libssl/libcrypto/libz, already present since nginx itself needs them), but if it does, it means the base image
+(Docker Hub `nginx:${NGINX_VERSION}` or the NGINX Plus `.deb`'s Ubuntu base) is missing one of those — check
+`NGINX_VERSION`/`UBUNTU_VERSION` match what the module `.deb` was actually built against.
 - **`nginx_plus` build fails with `failed to get build context nginx-plus-sw-root: ... no such file or directory`, or 
 `NGINX_PLUS_DEB not set`** — `NGINX_PLUS_SW_ROOT`/`NGINX_PLUS_DEB` in your `.env` are either unset or point at a directory/filename 
 that doesn't actually exist; double check both independently (`NGINX_PLUS_DEB` is resolved *inside* `NGINX_PLUS_SW_ROOT`, not this repo).

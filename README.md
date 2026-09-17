@@ -4,8 +4,8 @@ A working demo of `ngx_http_detect_icap_module`, the nginx dynamic module
 that scans requests/responses via ICAP (REQMOD/RESPMOD) before they reach
 the backend.
 
-This project does **not** build the module — it only runs a pre-built
-`.so`.
+This project does **not** build the module — it only installs a pre-built
+`.deb` (see the sibling `nginx-icap-module-src` checkout, which builds it).
 
 ## Layout
 
@@ -14,7 +14,7 @@ This project does **not** build the module — it only runs a pre-built
 | `docker/`            | Docker Compose stack (nginx + backend + observability) — see `docker/README.md` |
 | `terraform/`         | AWS deployment (Terraform) — see `terraform/ec2-nginx/README.md`                |
 | `nginx.docker.conf`  | nginx config template (envsubst'd at container start)                           |
-| `module/`            | put the pre-built `.so` here (gitignored)                                       |
+| `module/`            | put the pre-built `.deb` here (gitignored)                                      |
 | `backend/`           | demo backend source                                                             |
 | `files/`             | sample files the backend serves back over GET                                   |
 

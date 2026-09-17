@@ -2,8 +2,15 @@ ARG NGINX_VERSION=1.29.8
 
 FROM nginx:${NGINX_VERSION}
 
-# use prebuilt dynamic module
-COPY module/ngx_http_detect_icap_module.so /etc/nginx/modules/ngx_http_detect_icap_module.so
+# Prebuilt dynamic module, packaged as a .deb by the sibling
+# nginx-icap-module-src checkout — installs to
+# /usr/lib/nginx/modules/ngx_http_detect_icap_module.so, which this image's
+# /etc/nginx/modules (nginx's --modules-path, and where nginx.docker.conf's
+# `load_module modules/...` resolves against) is already a symlink to.
+# No `apt-get -f`/dependency resolution needed: the module only links
+# libssl/libcrypto/libz, all already present since nginx itself needs them.
+COPY module/nginx-icap-module.deb /tmp/nginx-icap-module.deb
+RUN dpkg -i /tmp/nginx-icap-module.deb && rm -f /tmp/nginx-icap-module.deb
 
 # template Nginx conf.
 COPY nginx.docker.conf /etc/nginx/nginx.conf.template

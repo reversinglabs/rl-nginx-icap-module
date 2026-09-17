@@ -38,15 +38,18 @@ RUN apt-get update \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
 # This .deb's nginx expects dynamic modules under /usr/lib/nginx/modules
-# (Dockerfile.nginx's Docker Hub image uses /etc/nginx/modules instead) --
-# nginx.docker.conf's `load_module modules/...` resolves against whichever
-# path nginx was built with.
+# (Dockerfile.nginx's Docker Hub image uses /etc/nginx/modules instead, a
+# symlink to the same path) -- nginx.docker.conf's `load_module modules/...`
+# resolves against whichever path nginx was built with.
 #
-# The .so is prebuilt by the sibling nginx-icap-module-src checkout, not
-# compiled here — copy it into module/ngx_http_detect_icap_module.so before
-# building (see README.md's Setup step 1).
-COPY module/ngx_http_detect_icap_module.so \
-     /usr/lib/nginx/modules/ngx_http_detect_icap_module.so
+# The module .deb is prebuilt by the sibling nginx-icap-module-src
+# checkout, not compiled here — copy it into module/nginx-icap-module.deb
+# before building (see README.md's Setup step 1). It installs straight to
+# /usr/lib/nginx/modules/ngx_http_detect_icap_module.so; no `apt-get -f`
+# needed since the module only links libssl/libcrypto/libz, already present
+# because NGINX Plus itself needs them.
+COPY module/nginx-icap-module.deb /tmp/nginx-icap-module.deb
+RUN dpkg -i /tmp/nginx-icap-module.deb && rm -f /tmp/nginx-icap-module.deb
 COPY nginx.docker.conf /etc/nginx/nginx.conf.template
 
 # Cert + key for the HTTPS listener (8443) are not baked into this image —

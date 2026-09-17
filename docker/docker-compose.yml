@@ -4,11 +4,11 @@
 # the two services), so each service sets its own instead.
 x-nginx_build_base: &nginx_build_base
   context: ..
-  # The prebuilt .so (from the sibling nginx-icap-module-src checkout) is
-  # copied into module/ngx_http_detect_icap_module.so before building — see
-  # README.md's Setup step 1 — and picked up by a plain COPY in
-  # Dockerfile.nginx / Dockerfile.nginx-plus, since it's already inside this
-  # build context.
+  # The prebuilt module .deb (from the sibling nginx-icap-module-src
+  # checkout) is copied into module/nginx-icap-module.deb before building —
+  # see README.md's Setup step 1 — and picked up by a plain COPY + `dpkg -i`
+  # in Dockerfile.nginx / Dockerfile.nginx-plus, since it's already inside
+  # this build context.
   args:
     NGINX_VERSION: "$NGINX_VERSION"
 
