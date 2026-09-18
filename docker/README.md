@@ -39,8 +39,7 @@ Also referenced from here, one level up at the repo root:
 
 ## Setup
 
-1. Copy the pre-built module `.deb` (built by the sibling
-   `nginx-icap-module-src` checkout's `./run.sh build` — see its README)
+1. Copy the pre-built module `.deb` (download latest Github release from [rl-nginx-icap-module](https://github.com/reversinglabs/rl-nginx-icap-module))
    into the repo's `module/` folder (one level up from here) and symlink it
    to the fixed name the Dockerfiles expect, `nginx-icap-module.deb`.
 

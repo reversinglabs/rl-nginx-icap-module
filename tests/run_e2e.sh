@@ -1,6 +1,6 @@
 #!/bin/sh
 # Assumes nginx/icap/backend are already running (e.g. via
-# harness/docker-compose.yml) — this only drives HTTP traffic through $NGINX_URL.
+# docker/docker-compose.yml) — this only drives HTTP traffic through $NGINX_URL.
 set -u
 
 BASE="${NGINX_URL:-http://localhost:8080}"
@@ -38,7 +38,7 @@ echo
 echo "== TEST 4: RESPMOD malicious — EICAR download should be BLOCKED (403) =="
 OUT=$(curl -s -w '\nHTTP:%{http_code}' "$BASE/eicar")
 echo "$OUT"
-check "RESPMOD malicious download blocked" "HTTP:200" "$OUT"
+check "RESPMOD malicious download blocked" "HTTP:403" "$OUT"
 
 echo
 echo "================  $PASS passed, $FAIL failed  ================"
