@@ -25,3 +25,15 @@ grafana_cidr_blocks = ["0.0.0.0/0"]
 # Pre-allocated Elastic IP (see eip.tf) — kept out of Terraform's
 # create/destroy cycle so it survives `terraform destroy` between sessions.
 elastic_ip_allocation_id = "eipalloc-xxxxxxxxx"    # nginx-icap-module-eip
+
+# S3 bucket the instance pulls its NGINX Plus install package + license
+# from at deploy time (see iam.tf / ec2.tf). Must have a 'versions/' prefix
+# holding the .deb(s) and a 'license/' prefix holding the .jwt — matching
+# NGINX_PLUS_DEB / NGINX_PLUS_LICENSE in whichever harness/.env-* the
+# deployed .env symlink points to.
+# nginx_plus_s3_bucket = "rl-nginx-plus-setup"
+
+# Set to false to stand up just the VPC/EC2/IAM/EIP plumbing without also
+# running docker compose (e.g. while diagnosing IAM permissions). Safe to
+# flip back to true (the default) on a later apply.
+# bootstrap_app = true

@@ -35,7 +35,7 @@ output "elastic_ip_allocation_id" {
 
 output "instance_public_dns" {
   description = "AWS-style public DNS name for the Elastic IP, e.g. ec2-3-127-146-157.eu-central-1.compute.amazonaws.com. Deliberately built from the EIP (data.aws_eip.web) via AWS's fixed naming pattern rather than read from aws_instance.web.public_dns: that attribute is captured when the instance is created, *before* aws_eip_association.web runs, so within the same apply it lags behind and shows the instance's ephemeral address until a separate refresh. Informational only either way — unusable for Let's Encrypt, since *.compute.amazonaws.com is policy-blocked from issuance."
-  value = "ec2-${replace(data.aws_eip.web.public_ip, ".", "-")}.${var.aws_region == "us-east-1" ? "compute-1.amazonaws.com" : "${var.aws_region}.compute.amazonaws.com"}"
+  value       = "ec2-${replace(data.aws_eip.web.public_ip, ".", "-")}.${var.aws_region == "us-east-1" ? "compute-1.amazonaws.com" : "${var.aws_region}.compute.amazonaws.com"}"
 }
 
 output "nginx_url" {

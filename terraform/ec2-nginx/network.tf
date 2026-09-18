@@ -113,7 +113,7 @@ resource "aws_vpc_security_group_ingress_rule" "grafana" {
   description       = "Grafana"
   cidr_ipv4         = var.grafana_cidr_blocks[count.index]
   from_port         = 3000
-  to_port            = 3000
+  to_port           = 3000
   ip_protocol       = "tcp"
   tags              = local.common_tags
 }

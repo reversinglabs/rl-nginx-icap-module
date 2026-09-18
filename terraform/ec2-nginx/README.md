@@ -9,12 +9,13 @@ no dependency on default VPC/subnets in the target AWS account.
 - Internet Gateway + public route table (`0.0.0.0/0` → IGW)
 - One public subnet (auto-assigns public IPs)
 - Security group: inbound 22 (SSH), 80 (HTTP), and 443 (HTTPS), all outbound
-- IAM role + instance profile for the instance, with (currently disabled —
-  commented out in `iam.tf` — because the deploying AWS role lacks
-  `iam:TagRole`/`iam:TagInstanceProfile`; re-enable once those permissions
-  are granted):
-  - `AmazonSSMManagedInstanceCore` (Session Manager access without SSH)
-  - `CloudWatchAgentServerPolicy`
+- IAM role + instance profile for the instance (untagged — the deploying AWS
+  role lacks `iam:TagRole`/`iam:TagInstanceProfile`; add `tags =
+  local.common_tags` back in `iam.tf` once those permissions are granted),
+  granting read-only access to `var.nginx_plus_s3_bucket`'s `versions/` and
+  `license/` prefixes (see "NGINX Plus assets" below). The
+  `AmazonSSMManagedInstanceCore`/`CloudWatchAgentServerPolicy` attachments
+  stay commented out in `iam.tf` for the same tagging-permission reason.
 - EC2 instance (latest Amazon Linux 2023, `t3.micro` by default) with
   `user_data` that installs and starts nginx, IMDSv2 enforced, encrypted
   gp3 root volume
@@ -28,6 +29,18 @@ no dependency on default VPC/subnets in the target AWS account.
 
 - AWS credentials in the environment with permissions to manage VPC, EC2,
   and IAM resources (see "Usage" below).
+- **An S3 bucket with the NGINX Plus install package(s) and license
+  already uploaded**, under `versions/` and `license/` prefixes
+  respectively — e.g.:
+  ```
+  s3://rl-nginx-plus-setup/versions/nginx-plus_37.0.4-1-noble_amd64.deb
+  s3://rl-nginx-plus-setup/license/nginx-one-eval.jwt
+  ```
+  The instance pulls these itself at deploy time (via its IAM instance
+  profile, `aws s3 sync`, see `ec2.tf`) into `~/nginx/versions` and
+  `~/nginx/license`, matching `NGINX_PLUS_SW_ROOT`/`NGINX_PLUS_LICENSE` in
+  `harness/.env-rl-aws`. Point `var.nginx_plus_s3_bucket` at it if it's
+  named something other than the default `rl-nginx-plus-setup`.
 - **A pre-allocated Elastic IP, created by hand before the first `apply`.**
   This module deliberately does *not* create the Elastic IP itself (see
   `eip.tf`) — it only looks up and associates one you already have.
@@ -139,8 +152,8 @@ terraform destroy
 
 ## Notes / things to adjust for production use
 
-- `ssh_cidr_blocks`, `http_cidr_blocks`, and `https_cidr_blocks` default to
-  `0.0.0.0/0` for a quick demo — restrict all three before using this
+- `ssh_cidr_blocks`, `http_cidr_blocks`, `https_cidr_blocks` and `grafana_cidr_blocks` 
+  default to `0.0.0.0/0` for a quick demo — restrict all three before using this
   beyond a sandbox.
 - Port 80 is briefly opened to `0.0.0.0/0` during every `apply` regardless
   of `http_cidr_blocks` — `docker-compose-certbot.yml`'s "certificates"
@@ -155,13 +168,6 @@ terraform destroy
   `NGINX_HTTPS_PORT` in whichever `harness/.env-*` file the deployed `.env`
   symlink points to — the NAT rules redirect `:80`/`:443` to these ports, so
   a mismatch means the corresponding port won't reach nginx.
-- The bundled nginx TLS cert is self-signed (see `harness/nginx.docker.conf`)
-  — expect a browser warning / need `curl -k` on `:443` until a real cert is
-  wired in.
-- No remote state backend is configured; add an `S3` + `DynamoDB` (or
-  Terraform Cloud) backend before using this for anything shared/long-lived.
-- Single AZ, single instance, no ALB/ASG — this is a minimal demo, not a
-  production topology.
 - `user_data.sh.tpl` installs the `nginx` OS package but never starts it as
   a systemd service — the module actually runs inside the Docker stack
   (`docker compose`), not via the host's own nginx.

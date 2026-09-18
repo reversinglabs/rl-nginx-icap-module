@@ -14,11 +14,11 @@ data "aws_ami" "al2023" {
 }
 
 resource "aws_instance" "web" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.web.id]
-  #  iam_instance_profile        = aws_iam_instance_profile.ec2.name
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  iam_instance_profile        = aws_iam_instance_profile.ec2.name
   key_name                    = local.ssh_key_name
   associate_public_ip_address = true
 
@@ -62,10 +62,21 @@ resource "aws_instance" "web" {
 
   # Wait for user_data (which installs rsync, among other things) to finish
   # before pushing the repo, and stage the destination directory.
+  #
+  # Also pulls the NGINX Plus install package + license from S3
+  # (var.nginx_plus_s3_bucket) straight onto the instance, using this
+  # instance's own IAM role (aws_iam_instance_profile.ec2 / iam.tf) rather
+  # than the operator's local credentials — awscli ships preinstalled on
+  # AL2023, so no user_data change is needed for this. Lands at
+  # ~/nginx/versions and ~/nginx/license, matching NGINX_PLUS_SW_ROOT /
+  # NGINX_PLUS_LICENSE in harness/.env-rl-aws.
   provisioner "remote-exec" {
     inline = [
       "cloud-init status --wait > /dev/null 2>&1 || true",
       "mkdir -p /home/ec2-user/${local.repo_dest_dir}",
+      "mkdir -p /home/ec2-user/nginx/versions /home/ec2-user/nginx/license",
+      "aws s3 sync --only-show-errors --region '${var.aws_region}' 's3://${var.nginx_plus_s3_bucket}/versions/' /home/ec2-user/nginx/versions/",
+      "aws s3 sync --only-show-errors --region '${var.aws_region}' 's3://${var.nginx_plus_s3_bucket}/license/' /home/ec2-user/nginx/license/",
     ]
   }
 
@@ -106,6 +117,7 @@ resource "aws_instance" "web" {
 #      and the instance stuck on its ephemeral address. See git history /
 #      conversation for the incident this fixes.
 resource "terraform_data" "deploy" {
+  count      = var.bootstrap_app ? 1 : 0
   depends_on = [aws_eip_association.web]
 
   # Forces this resource (and hence its provisioners, which otherwise only
@@ -157,10 +169,10 @@ resource "terraform_data" "deploy" {
   # this triggers to actually succeed.
   provisioner "remote-exec" {
     inline = [
-      "cd /home/ec2-user/${local.repo_dest_dir}/harness",
+      "cd /home/ec2-user/${local.repo_dest_dir}/docker",
       "[ -L .env ] && unlink .env || true",
       "ln -s .env-rl-aws .env",
-      "docker compose --profile ce --profile test -f docker-compose.yml -f docker-compose-certbot.yml -f docker-compose.observability.yml up -d --build || true",
+      "docker compose -f docker-compose.yml -f docker-compose-certbot.yml -f docker-compose.observability.yml up -d --build || true",
     ]
   }
 

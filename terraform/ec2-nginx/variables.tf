@@ -34,6 +34,12 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
+variable "bootstrap_app" {
+  description = "Whether to run terraform_data.deploy — the provisioner that opens port 80 temporarily, symlinks .env to .env-rl-aws, and runs `docker compose up --build` (Let's Encrypt cert + the app itself). Set to false to stand up just the VPC/EC2/IAM/EIP plumbing (e.g. while diagnosing IAM permissions) without also bringing the docker stack up. Flipping this back to true on a later apply runs the deploy normally — nothing here is destructive to skip."
+  type        = bool
+  default     = true
+}
+
 variable "elastic_ip_allocation_id" {
   description = "Allocation ID (eipalloc-...) of a pre-existing Elastic IP to associate with the instance. Deliberately looked up, not created, by this module (see eip.tf) — the stack gets torn down and re-applied between sessions to save cost, and Terraform creating/releasing the address on every such cycle would break any DNS record pointed at it. Allocate it once by hand (AWS Console -> EC2 -> Elastic IPs -> Allocate Elastic IP address, or `aws ec2 allocate-address --domain vpc`) and set this to its allocation ID."
   type        = string
@@ -85,6 +91,12 @@ variable "nginx_https_port" {
   description = "Host port nginx's HTTPS listener is published on by docker compose (NGINX_HTTPS_PORT in harness/.env). Inbound traffic on 443 is NAT-redirected to this port, same as var.nginx_http_port for HTTP."
   type        = number
   default     = 8443
+}
+
+variable "nginx_plus_s3_bucket" {
+  description = "S3 bucket the instance pulls its NGINX Plus install package(s) and license from, via its IAM instance profile (see iam.tf). Expected layout: 'versions/' holds the .deb(s) matching NGINX_PLUS_DEB, 'license/' holds the .jwt matching the basename of NGINX_PLUS_LICENSE, both in whichever harness/.env-* file the deployed .env symlink points to. Synced to ~/nginx/versions and ~/nginx/license on the instance."
+  type        = string
+  default     = "rl-nginx-plus-setup"
 }
 
 variable "grafana_cidr_blocks" {
